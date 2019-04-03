@@ -9,7 +9,7 @@ class ChillerPacketEncoder(object):
     def _checksum(self, st):
         """
         Checksum field shall be two ASCII hexadecimal bytes
-        represeiting the sum of all previous bytes (8 bit 
+        representing the sum of all previous bytes (8 bit 
         summation, no carry) of the command starting with SOC
         
         Parameters
@@ -61,7 +61,8 @@ class ChillerPacketEncoder(object):
         strings. The first character is the sign, the next
         three are the whole-number digits, and the last 
         character is a decimal digit. This function takes
-        any number and puts it in that format. For example,
+        any number between -999.9 and 999.9 and puts it in
+        that format. For example:
         1.29 --> '+0013'
         -20  --> '-0200'
         0.5  --> '+0005'
@@ -75,6 +76,9 @@ class ChillerPacketEncoder(object):
         5-character string
 
         """
+
+        if num < -999.9 or num > 999.9:
+            raise Exception
         if num < 0:
             sign = "-"
         else: sign = "+" 
@@ -136,6 +140,63 @@ class ChillerPacketEncoder(object):
 
         message = "04rSupplyT"
         return self._commandwrapper(message)
+
+    def readReturnTemp(self):
+        """
+        Command ID 07
+        Generates the ascii string that requests a the 
+        chiller's return temperature
+        
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        string
+
+        """
+
+        message = "07rReturnT"
+        return self._commandwrapper(message)
+    
+    def readAmbientTemp(self):
+        """
+        Command ID 08
+        Generates the ascii string that requests a the 
+        ambient temperature
+        
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        string
+
+        """
+
+        message = "08rAmbTemp"
+        return self._commandwrapper(message)
+
+    def readProcessFlow(self):
+        """
+        Command ID 09
+        Generates the ascii string that requests a the 
+        chiller's process flow, in liters/minute
+        
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        string
+
+        """
+
+        message = "09rProsFlo"
+        return self._commandwrapper(message)
     
     def setControlTemp(self, temp):
         """
@@ -155,4 +216,94 @@ class ChillerPacketEncoder(object):
 
         data = self._tempformatter(temp)
         output = self._commandwrapper('17sCtrlTmp' + data)
+        return output
+
+    def setWarning(self, warntype, value):
+        """
+        Command IDs 21-25
+        Generates the ascii string that sets a hi/low
+        temperature warning and low flow warning.
+        Temperatures are Celsius and flow is liters
+        per minute. Temps may be negative, but flow 
+        must be positive.
+        
+        Parameters
+        ----------
+        warntype : string
+            "HiSupplyTemp"
+            "LowSupplyTemp"
+            "HiAmbientTemp"
+            "LowAmbientTemp"
+            "LowProcessFlow" 
+        
+        value : float in range -999.9 to 999.9
+
+        Returns
+        -------
+        string
+
+        """
+
+        if warntype == "HiSupplyTemp":
+            message = "21sHiSpTWn" + self._tempformatter(value)
+        elif warntype == "LowSupplyTemp":
+            message = "22sLoSpTWn" + self._tempformatter(value)
+        elif warntype == "HiAmbientTemp":
+            message = "23sHiAmTWn" + self._tempformatter(value)
+        elif warntype == "LowAmbientTemp":
+            message = "24sLoAmTWn" + self._tempformatter(value)
+        elif warntype == "LowProcessFlow":
+            if value < 0: 
+                raise Exception
+            message = "25sLoPFlWn" + self._tempformatter(value)
+        else:
+            raise Exception
+        output = self._commandwrapper(message)
+        return output
+
+    def setAlarm(self, alarmtype, value):
+        """
+        Command IDs 26-30
+        Generates the ascii string that sets a hi/low
+        temperature alarms and low flow alarm. Alarms
+        are like warnings but they also trigger a 
+        fault state in the CSC, which will lead to some
+        action to try to safely shut things down.
+        Temperatures are Celsius and flow is liters
+        per minute. Temps may be negative, but flow 
+        must be positive.
+
+        
+        Parameters
+        ----------
+        warntype : string
+            "HiSupplyTemp"
+            "LowSupplyTemp"
+            "HiAmbientTemp"
+            "LowAmbientTemp"
+            "LowProcessFlow" 
+        
+        value : float in range -999.9 to 999.9
+
+        Returns
+        -------
+        string
+
+        """
+
+        if alarmtype == "HiSupplyTemp":
+            message = "26sHiSpTAl" + self._tempformatter(value)
+        elif alarmtype == "LowSupplyTemp":
+            message = "27sLoSpTAl" + self._tempformatter(value)
+        elif alarmtype == "HiAmbientTemp":
+            message = "28sHiAmTAl" + self._tempformatter(value)
+        elif alarmtype == "LowAmbientTemp":
+            message = "29sLoAmTAl" + self._tempformatter(value)
+        elif alarmtype == "LowProcessFlow":
+            if value < 0: 
+                raise Exception
+            message = "30sLoPFlAl" + self._tempformatter(value)
+        else:
+            raise Exception
+        output = self._commandwrapper(message)
         return output
